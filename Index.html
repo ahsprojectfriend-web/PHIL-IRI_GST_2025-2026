@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PHIL-IRI Group Screening Test</title>
+
+<style>
+:root{
+  --maroon:#800000;
+  --gold:#FFD700;
+  --black:#000;
+  --yellow:#FFEB3B;
+}
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f4f4f4;
+}
+.header-bar{
+  background:var(--maroon);
+  color:var(--gold);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px;
+}
+.logo{
+  height:60px;
+}
+.center-title{
+  text-align:center;
+  flex:1;
+}
+.school-name{
+  font-size:18px;
+  font-weight:bold;
+}
+.main-title{
+  font-size:20px;
+}
+.container{
+  padding:15px;
+}
+button{
+  background:var(--gold);
+  border:none;
+  padding:10px 15px;
+  margin-top:10px;
+  font-size:16px;
+  cursor:pointer;
+  width:100%;
+}
+button:hover{
+  background:var(--yellow);
+}
+.hidden{
+  display:none;
+}
+.option-btn{
+  text-align:left;
+}
+#timer{
+  font-weight:bold;
+  color:var(--maroon);
+}
+input,select{
+  width:100%;
+  padding:6px;
+  margin-top:5px;
+}
+label{
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<header class="header-bar">
+  <img src="sdo_logo.png" class="logo">
+  <div class="center-title">
+    <div class="school-name">MANUEL G. ARAULLO HIGH SCHOOL</div>
+    <div class="main-title">PHIL-IRI Group Screening Test</div>
+  </div>
+  <img src="ahs_logo.png" class="logo">
+</header>
+
+<div class="container">
+
+<!-- STUDENT INFO -->
+<div id="infoPage">
+  <label>Grade Level</label>
+  <select id="grade">
+    <option value="">Select Grade</option>
+    <option value="7">Grade 7</option>
+    <option value="8">Grade 8</option>
+    <option value="9">Grade 9</option>
+    <option value="10">Grade 10</option>
+  </select>
+
+  <label>Section</label>
+  <input id="section">
+
+  <label>Gender</label>
+  <select id="gender">
+    <option value="">Select</option>
+    <option>Male</option>
+    <option>Female</option>
+  </select>
+
+  <label>LRN</label>
+  <input id="lrn">
+
+  <label>Last Name</label>
+  <input id="lname">
+
+  <label>First Name</label>
+  <input id="fname">
+
+  <label>M.I.</label>
+  <input id="mi">
+
+  <button onclick="startTest()">Start Test</button>
+</div>
+
+<!-- TEST PAGE -->
+<div id="testPage" class="hidden">
+  <div>Time Left: <span id="timer"></span></div>
+  <h3>Question <span id="qnum"></span> / 40</h3>
+
+  <div id="qtext"></div>
+
+  <button class="option-btn" onclick="answer('A')" id="optA"></button>
+  <button class="option-btn" onclick="answer('B')" id="optB"></button>
+  <button class="option-btn" onclick="answer('C')" id="optC"></button>
+</div>
+
+<!-- RESULT PAGE -->
+<div id="resultPage" class="hidden">
+  <h2>Test Finished</h2>
+  <div id="scoreText"></div>
+  <button onclick="downloadCSV()">Download Results (CSV)</button>
+</div>
+
+</div>
+
+<script>
+const SHEETS={
+  7:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTnzNaj6ZDWpHQg1au3ImrsjUGip3hBR59TFeGQ39p-HQwCjWYfjfFQ9JPGgpbLKs2Zaae6QJBva17j/pub?gid=0&single=true&output=csv",
+  8:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTnzNaj6ZDWpHQg1au3ImrsjUGip3hBR59TFeGQ39p-HQwCjWYfjfFQ9JPGgpbLKs2Zaae6QJBva17j/pub?gid=866007441&single=true&output=csv",
+  9:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTnzNaj6ZDWpHQg1au3ImrsjUGip3hBR59TFeGQ39p-HQwCjWYfjfFQ9JPGgpbLKs2Zaae6QJBva17j/pub?gid=1187219872&single=true&output=csv",
+ 10:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTnzNaj6ZDWpHQg1au3ImrsjUGip3hBR59TFeGQ39p-HQwCjWYfjfFQ9JPGgpbLKs2Zaae6QJBva17j/pub?gid=2019680124&single=true&output=csv"
+};
+
+let questions=[];
+let current=0;
+let score=0;
+let time=3600;
+let timerInt;
+let student={};
+
+async function startTest(){
+  student={
+    grade:grade.value,
+    section:section.value,
+    gender:gender.value,
+    lrn:lrn.value,
+    lname:lname.value,
+    fname:fname.value,
+    mi:mi.value
+  };
+
+  if(!student.grade||!student.section||!student.gender||!student.lrn||!student.lname||!student.fname){
+    alert("Please fill all required fields.");
+    return;
+  }
+
+  const res=await fetch(SHEETS[student.grade]);
+  const text=await res.text();
+  const rows=text.trim().split("\n").map(r=>r.split(","));
+  rows.shift();
+
+  questions=rows.map(r=>({
+    part:r[0],
+    q:r[1],
+    a:r[2],
+    b:r[3],
+    c:r[4],
+    ans:r[5]
+  }));
+
+  infoPage.classList.add("hidden");
+  testPage.classList.remove("hidden");
+
+  startTimer();
+  showQ();
+}
+
+function startTimer(){
+  timerInt=setInterval(()=>{
+    time--;
+    let m=Math.floor(time/60);
+    let s=time%60;
+    timer.textContent=m+":"+s.toString().padStart(2,"0");
+    if(time<=0) finish();
+  },1000);
+}
+
+function showQ(){
+  let q=questions[current];
+  qnum.textContent=current+1;
+
+  if(q.part==="D"){
+    qtext.innerHTML=`<img src="${q.q}" style="max-width:300px"><br>`;
+  }else{
+    qtext.textContent=q.q;
+  }
+
+  optA.textContent="A. "+q.a;
+  optB.textContent="B. "+q.b;
+  optC.textContent="C. "+q.c;
+}
+
+function answer(letter){
+  if(letter===questions[current].ans) score++;
+  current++;
+
+  if(current>=40){
+    finish();
+  }else{
+    showQ();
+  }
+}
+
+function finish(){
+  clearInterval(timerInt);
+  testPage.classList.add("hidden");
+  resultPage.classList.remove("hidden");
+  scoreText.textContent="Score: "+score+" / 40";
+  saveLocal();
+}
+
+function saveLocal(){
+  let data=JSON.parse(localStorage.getItem("philiri")||"[]");
+  data.push({...student,score:score});
+  localStorage.setItem("philiri",JSON.stringify(data));
+}
+
+function downloadCSV(){
+  let data=JSON.parse(localStorage.getItem("philiri")||"[]");
+  let csv="Grade,Section,Gender,LRN,Last Name,First Name,MI,Score\n";
+  data.forEach(r=>{
+    csv+=`${r.grade},${r.section},${r.gender},${r.lrn},${r.lname},${r.fname},${r.mi},${r.score}\n`;
+  });
+  let blob=new Blob([csv],{type:"text/csv"});
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="philiri_results.csv";
+  a.click();
+}
+</script>
+
+</body>
+</html>

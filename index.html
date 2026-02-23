@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MGAHS Phil-IRI - Grade 7</title>
+    <style>
+        :root { --ahs-maroon:#800000; --ahs-gold:#FFD700; --ans-green: #28a745; --frust-red: #dc3545; --inst-blue: #007bff; }
+        body { font-family:'Segoe UI', sans-serif; background:#f4f4f4; margin:0; padding:10px; display:flex; flex-direction: column; align-items:center; }
+        .container { background:white; max-width:900px; width:100%; padding:25px; border-radius:15px; box-shadow:0 5px 20px rgba(0,0,0,0.15); margin-top: 20px; }
+        
+        #loader-ui { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: var(--ahs-maroon); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; }
+        .spinner { width: 60px; height: 60px; border: 6px solid var(--ahs-gold); border-top: 6px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .school-header { text-align:center; border-bottom:3px solid var(--ahs-maroon); padding-bottom:10px; margin-bottom:20px; }
+        .school-name { font-size:1.6rem; font-weight:bold; color:var(--ahs-maroon); margin:0; }
+        .assessment-title { font-size:1rem; font-weight:bold; color:var(--ahs-maroon); background:var(--ahs-gold); padding:5px 20px; border-radius:5px; display:inline-block; }
+        
+        #timer-bar { background: #333; color: white; width: 100%; max-width: 900px; padding: 12px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        .nav-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; justify-content: center; background: #eee; padding: 12px; border-radius: 10px; }
+        .nav-dot { width: 40px; height: 35px; border-radius: 5px; border: 1px solid #aaa; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; }
+        .nav-dot.active { border: 2.5px solid #000; background: var(--ahs-gold); }
+        .nav-dot.answered { background: var(--ans-green); color: white; border-color: #1e7e34; }
+        
+        #storyBox { background:#fff; border:2px solid var(--ahs-maroon); padding:20px; margin-bottom: 20px; line-height: 1.6; white-space: pre-line; max-height: 400px; overflow-y: auto; border-radius: 8px; font-size: 1.05rem; }
+        #storyBox img { width: 100%; height: auto; border-radius: 5px; }
+
+        .choice { display:block; width: 100%; margin: 8px 0; padding: 12px 20px; background: #fff; border: 1.5px solid #ddd; border-radius: 10px; cursor: pointer; text-align: left; font-size: 1rem; }
+        .choice.selected { border-color: var(--ahs-maroon); background: #fff1f1; font-weight: bold; box-shadow: inset 4px 0 0 var(--ahs-maroon); }
+        
+        .result-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 1.1rem; }
+        .result-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .level-tag { display: inline-block; padding: 10px 20px; border-radius: 5px; color: white; font-weight: bold; margin-top: 10px; }
+
+        .btn-nav { padding: 12px 25px; background: var(--ahs-maroon); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background:var(--ahs-maroon); color:white; padding:15px; border-radius:50px; cursor:pointer; border:none; font-weight:bold; width:100%; margin-top:15px; }
+        
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; }
+        .field { display: flex; flex-direction: column; margin-bottom: 10px; }
+        .field label { font-size: 12px; font-weight: bold; color: var(--ahs-maroon); }
+        .field input, .field select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+
+        #quiz-ui, #results-ui, #front-page { display: none; width: 100%; flex-direction: column; align-items: center; }
+        #front-page { display: flex; }
+    </style>
+</head>
+<body>
+
+<div id="loader-ui">
+    <div class="spinner"></div>
+    <h2 id="loader-text">Story Completed!</h2>
+    <p>Please take a 3-second rest...</p>
+</div>
+
+<div class="container" id="front-page">
+    <div class="school-header">
+        <p class="school-name">Manuel G. Araullo High School</p>
+        <p class="assessment-title">GST - GRADE 7</p>
+    </div>
+    <div class="row">
+        <div class="field"><label>Surname</label><input type="text" id="surname" placeholder="Last Name"></div>
+        <div class="field"><label>First Name</label><input type="text" id="firstname" placeholder="First Name"></div>
+    </div>
+    <div class="row">
+        <div class="field">
+            <label>Gender</label>
+            <select id="gender"><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select>
+        </div>
+        <div class="field"><label>Section</label><input type="text" id="section"></div>
+    </div>
+    <div class="row">
+        <div class="field"><label>LRN</label><input type="text" id="lrn"></div>
+    </div>
+    <button class="btn-primary" onclick="startTest()">START ASSESSMENT</button>
+</div>
+
+<div id="quiz-ui">
+    <div id="timer-bar"><span id="part-label">PART A</span><span id="timer">60:00</span></div>
+    <div class="container">
+        <div class="nav-grid" id="navGrid"></div>
+        <div id="storyBox"></div>
+        <div class="item-label" id="itemNum" style="font-weight:bold; color:var(--ahs-maroon)">ITEM #1</div>
+        <div id="questionBox" style="margin-bottom: 15px; font-size: 1.1rem;"></div>
+        <div id="choices"></div>
+        <div style="display:flex; justify-content:space-between; margin-top:20px;">
+            <button class="btn-nav" id="prevBtn" onclick="changeQ(-1)">Previous</button>
+            <button class="btn-nav" onclick="changeQ(1)" id="nextBtn">Next Item</button>
+        </div>
+    </div>
+</div>
+
+<div class="container" id="results-ui">
+    <h2 style="color:var(--ahs-maroon); text-align: center;">Summary of Scores</h2>
+    <table class="result-table">
+        <tr><td>Part A: Poem</td><td id="res-A">0 / 10</td></tr>
+        <tr><td>Part B: Plant Intelligence</td><td id="res-B">0 / 10</td></tr>
+        <tr><td>Part C: Rainfall Warnings</td><td id="res-C">0 / 10</td></tr>
+        <tr><td>Part D: Solid Waste Management</td><td id="res-D">0 / 10</td></tr>
+        <tr style="border-top: 2px solid var(--ahs-maroon); font-weight: bold;"><td>Total Score</td><td id="res-total">0 / 40</td></tr>
+    </table>
+    <div style="text-align: center;">
+        <p>Comprehension Level:</p>
+        <div id="comp-level" class="level-tag">N/A</div>
+    </div>
+    <button class="btn-primary" onclick="location.reload()" style="width: 200px; margin-top: 20px;">Return Home</button>
+</div>
+
+<script>
+const DATA = {
+    stories: {
+        A: `WHAT LITTLE THINGS!\nBy Madison Julius Cawein\n\nWhat little things are those\nThat hold our happiness!\nA smile, a glance, a rose\nDropped from her hair or dress;\nA word, a look, a touch,\nThese are so much, so much.\n\nAn air we can't forget;\nA sunset's gold that gleams;\nA spray of mignonette,\nWill fill the soul with dreams\nMore than all history says,\nOr romance of old days.\n\nFor of the human heart,\nNot brain, is memory;\nThese things it makes a part\nOf its own entity;\nThe joys, the pains whereof\nAre the very food of love.`,
+        B: `PLANT INTELLIGENCE\n\nPlants are considered life-support on Earth because of the countless things they provide to the entire biosphere. With their great significance and surprising qualities, many scientists were drawn to consider whether plants have feelings or possess some degree of intelligence. While many people believe that plants do not have any emotions as people do, plants do show signs of responding to their environment. At present, many studies have been conducted to discover the possibility that plants exhibit intelligence or, at the least, can feel.\n\nMany plant biologists and botanists use the term “neural activity” to describe plant behavior despite the fact that plants do not have brains or neurons. One remarkable study that demonstrates such activity was done by Bohm J., et al. (2016), as cited by Trewavas (2016), on a Venus fly-trap, a plant that captures and consumes a variety of small flying insects. After carefully examining the behavior of the said carnivorous plant, the researchers concluded that the Venus fly-trap can actually “count” up to five. Their assumption was based on the following observations:\n\n• As a fly-trap hair is touched the first time, the plant makes no response.\n• When a second hair is touched within 20 seconds, the open petals of the plant snap shut, trapping its potential meal.\n• As the insect begins to struggle, at the third touch of a plant hair, the plant again makes no response.\n• The same lack of response occurs the fourth time a plant hair is stimulated.\n• Only with the fifth hair touch do the plant’s digestive enzymes start the process of digesting its prey.\n\nThe abovementioned observations can be interpreted as the fly-trap’s knowledge of when best to attack prey and avoid false starts. These may not be an indication of a plant’s intelligence comparable to humans, but they show that plants somehow feel because of their response to their environment.\n\nNo. of words: 326\nWritten by: Lyra B. Bedis`,
+        C: `GET TO KNOW PAGASA’S RAINFALL WARNINGS\n\nThe Philippines is visited by an average of 20 typhoons a year. Some are very strong, bringing heavy rains and causing floods in many areas. In 2012, PAGASA started using color-coded rainfall advisories. These were classified into three levels: Yellow, Orange, and Red.\n\nThe Yellow Rainfall Warning means that there will be heavy rainfall of 7.5 to 15 mm in an hour, which may continue for the next two hours. Flooding is possible in affected areas. The public is advised to check weather bulletin updates.\n\nThe Orange Rainfall Warning means that there will be intense rainfall of 15 to 30 mm in an hour, which may continue for the next two hours. Flooding is expected in affected areas. Residents must be ready for possible evacuation.\n\nThe Red Rainfall Warning means that there will be torrential rainfall of more than 30 mm in an hour, which may continue for the next two hours. It is also issued when rainfall of more than 65 mm continues for three hours. Serious flooding is expected. Residents should start evacuating.\n\nThrough these color-coded rainfall warnings, citizens become better prepared for typhoons.\n\nNumber of words: 190 (Written by: Ma Glecita C. Columna)`,
+        D: `Grade7_D.png` 
+    },
+    ans: ["D","D","B","B","D","A","B","A","A","B","C","D","B","A","C","C","A","C","D","B","A","B","C","C","A","B","B","D","D","B","A","D","D","A","B","C","C","C","A","B"],
+    questions: [
+        /* PART A */
+        { q:"Which of the following are 'little things' that hold happiness?", a:"air, perfume, hair", b:"flower, praise, look", c:"joy, food, smile", d:"word, touch, gold" },
+        { q:"In the 2nd stanza, what does the word “gleams” mean?", a:"beams", b:"dreams", c:"reflects", d:"shines" },
+        { q:"What general truth is expressed in the 2nd stanza?", a:"Air is a basic need of everyone.", b:"Everyone loves to dream.", c:"Love and romance are the same.", d:"The sunset's color is gold." },
+        { q:"Which of the following contains a figure of speech?", a:"A sunset's gold that gleams.", b:"More than all history says.", c:"Not brain, is memory.", d:"What little things are those." },
+        { q:"What sensory imagery was mostly used in stanza 1?", a:"Auditory (sound)", b:"Gustatory (taste)", c:"Olfactory (smell)", d:"Visual (sight)" },
+        { q:"Which of the following are themes expressed in the poem?", a:"contentment, joy, memory", b:"love, nature, happiness", c:"romance, pain, health", d:"sadness, joy, history" },
+        { q:"What does the line “The joys, the pains whereof, / Are the very food of love” mean?", a:"One must experience sadness to experience love.", b:"Sad and happy experiences make love grow.", c:"To love is to accept imperfections and limitations.", d:"Love is a beautiful experience and must be shared." },
+        { q:"What is the message of the poem?", a:"Happiness can be found in little things.", b:"Little things are part of memories.", c:"The little things in life are important.", d:"To live is to appreciate little things." },
+        { q:"What is the general tone of the poem?", a:"Cheerful", b:"Funny", c:"Optimistic", d:"Serious" },
+        { q:"What is the author’s purpose in writing the poem?", a:"To act it out on stage", b:"To express emotions", c:"To narrate a story", d:"To praise a loved one" },
+        /* PART B */
+        { q:"Why are plants considered as life-support on Earth?", a:"They create habitats and shelter.", b:"They maintain the atmosphere by absorbing oxygen.", c:"They provide countless things to the entire biosphere.", d:"They supply food to all human beings." },
+        { q:"Which of the following is stated in the first paragraph?", a:"Plants are intelligent but can't talk.", b:"Plants express feelings when alone.", c:"Plants provide many things but are not sufficient.", d:"Plants can respond to their environment but do not have emotions." },
+        { q:"Which of the following makes a Venus fly-trap unique?", a:"It can capture small insects.", b:"It can count up to five.", c:"It can digest its prey.", d:"It can release enzymes." },
+        { q:"What does “neural activity” mean in the text?", a:"It describes the complex behavior of plants.", b:"It refers to the digestive process of animals.", c:"It refers to the brain work process.", d:"It tells the way people think and act." },
+        { q:"Which of the following observations about Venus fly-traps is NOT true?", a:"The plant is not affected by first touch.", b:"The plant doesn't respond until second touch.", c:"The plant snaps shut its petal after the third touch.", d:"The plant starts digesting its prey on the fifth touch." },
+        { q:"Based on the behavior of the Venus fly-trap, what can indicate plant intelligence?", a:"Anticipating movement.", b:"Eliminating harmful insects.", c:"Identifying when to catch their prey.", d:"Protecting themselves from danger." },
+        { q:"Which of the following is NOT stated in the selection?", a:"Plants like humans are capable of feeling.", b:"Plants like animals can engage in activities.", c:"Plants like humans possess intelligence.", d:"Plants like humans respond to the environment." },
+        { q:"What is the author's purpose in writing the text?", a:"To amuse the readers", b:"To compare and contrast", c:"To inform the readers about a specific trait", d:"To persuade the readers" },
+        { q:"How did the author accomplish his/her purpose?", a:"By comparing", b:"By describing", c:"By enumerating traits", d:"By reporting results of studies" },
+        { q:"What main idea is expressed in the selection?", a:"Plants are living things that are locomotive.", b:"Plants are living things that have feelings and intelligence.", c:"Plants have emotions and reason.", d:"Plants use strategies to lure prey." },
+        /* PART C */
+        { q:"What can be expected when a YELLOW rainfall warning is raised?", a:"There will be continuous heavy rainfall for an hour.", b:"There will be a strong typhoon in the next two hours.", c:"There would be strong winds together with the rainfall.", d:"There will be evacuation of people from flooded areas." },
+        { q:"In which rainfall warning should residents start evacuating?", a:"orange", b:"red", c:"violet", d:"yellow" },
+        { q:"How much rainfall is expected in an hour when described as “intense”?", a:"less than 7.5 mm", b:"7.5 to 15 mm", c:"15 to 30 mm", d:"more than 30 mm" },
+        { q:"What do the three color-coded rainfall advisories of PAGASA predict?", a:"the heavy winds", b:"the need for evacuation", c:"the threat of flooding", d:"the typhoon signals" },
+        { q:"What is the difference in the three color-coded rainfall advisories?", a:"amount of rainfall there would be", b:"height of the flood", c:"number of hours it continues", d:"strength of wind" },
+        { q:"Which is true about PAGASA's color-coded rainfall warnings?", a:"Classes automatically suspended.", b:"The darker the color, the more dangerous.", c:"Strong storm coming every time.", d:"People expected to evacuate immediately." },
+        { q:"According to the article, what should be done when yellow warning is raised?", a:"Leave homes immediately.", b:"Listen to next update and act based on report.", c:"Start packing.", d:"Stay home and wait." },
+        { q:"Under what topic will PAGASA's rainfall warning be discussed?", a:"Atmosphere", b:"Climate", c:"Temperature", d:"Weather" },
+        { q:"Which important information is NOT mentioned in the text?", a:"amount of rainfall", b:"government agency", c:"expected activities", d:"emergency numbers" },
+        { q:"How did the author organize the ideas in the selection?", a:"by describing steps", b:"by enumerating the different types", c:"by identifying causes", d:"by suggesting actions" },
+        /* PART D */
+        { q:"How many pounds of waste does a person produce every day?", a:"1.5 pounds", b:"2.5 pounds", c:"3.5 pounds", d:"4.5 pounds" },
+        { q:"What is the Ecological Solid Waste Management Act of 2000?", a:"Everyone's own responsibility", b:"Reduce waste and recycling", c:"Better disposal technology", d:"Provides a comprehensive program" },
+        { q:"According to the infographic, what is true about PH solid waste?", a:"Largest contributor in Asia", b:"Expect increase next year", c:"Produce 18.05M tons yearly", d:"4th main generator among ASEAN countries" },
+        { q:"Which of the following is NOT a step on how to properly manage waste?", a:"evaluate wastes", b:"identify wastes", c:"manage wastes", d:"recycle wastes" },
+        { q:"Which statement is supported by the infographic?", a:"Classified into six categories.", b:"Managed based on 4Rs.", c:"Produced by poor countries.", d:"Impact on the economy." },
+        { q:"Food scraps like leftovers belong to what classification?", a:"e-waste", b:"metal", c:"organic", d:"paper" },
+        { q:"What was the author's suggestion regarding waste management?", a:"organize waste properly", b:"labels", c:"separate garbage at home", d:"biodegradable containers" },
+        { q:"Which action DOES NOT support the 3Rs?", a:"avoiding disposables", b:"buying secondhand", c:"creating backyard garden", d:"controlling paper use" },
+        { q:"Which question applies to 'rethinking'?", a:"Can I use alternatives?", b:"Can I recycle?", c:"Can I reduce?", d:"Can I use again?" },
+        { q:"Which statement best summarizes the infographic?", a:"Allows products to fullest extent.", b:"Achieved through solid waste management.", c:"Sustain the environment.", d:"Prevents pollution." }
+    ]
+};
+
+let userAnswers = new Array(40).fill(null);
+let curIdx = 0;
+let timerSeconds = 3600;
+
+function startTest() {
+    if(!document.getElementById('surname').value) return alert("Please enter your surname.");
+    document.getElementById('front-page').style.display = 'none';
+    document.getElementById('quiz-ui').style.display = 'flex';
+    updateUI();
+    setInterval(() => {
+        if(timerSeconds <= 0) return;
+        timerSeconds--;
+        let m = Math.floor(timerSeconds/60), s = timerSeconds%60;
+        document.getElementById('timer').innerText = m + ":" + (s < 10 ? "0" + s : s);
+    }, 1000);
+}
+
+function updateUI() {
+    const sBox = document.getElementById('storyBox');
+    const grid = document.getElementById('navGrid');
+    let start = 0, end = 9, storyKey = 'A', partName = "PART A";
+    if (curIdx >= 10 && curIdx < 20) { start = 10; end = 19; storyKey = 'B'; partName = "PART B"; }
+    else if (curIdx >= 20 && curIdx < 30) { start = 20; end = 29; storyKey = 'C'; partName = "PART C"; }
+    else if (curIdx >= 30) { start = 30; end = 39; storyKey = 'D'; partName = "PART D"; }
+
+    document.getElementById('part-label').innerText = partName;
+    if (storyKey === 'D') sBox.innerHTML = `<img src="${DATA.stories.D}" alt="Infographic">`;
+    else sBox.innerText = DATA.stories[storyKey];
+
+    grid.innerHTML = "";
+    for(let i = start; i <= end; i++) {
+        let d = document.createElement('div');
+        d.className = `nav-dot ${i === curIdx ? 'active' : ''} ${userAnswers[i] ? 'answered' : ''}`;
+        d.innerText = i + 1;
+        d.onclick = () => { curIdx = i; updateUI(); };
+        grid.appendChild(d);
+    }
+
+    const q = DATA.questions[curIdx];
+    document.getElementById('itemNum').innerText = "ITEM #" + (curIdx + 1);
+    document.getElementById('questionBox').innerText = q.q;
+    const cBox = document.getElementById('choices'); cBox.innerHTML = "";
+    ['a','b','c','d'].forEach(l => {
+        let btn = document.createElement('button');
+        btn.className = `choice ${userAnswers[curIdx] === l.toUpperCase() ? 'selected' : ''}`;
+        btn.innerText = `${l.toUpperCase()}. ${q[l]}`;
+        btn.onclick = () => { userAnswers[curIdx] = l.toUpperCase(); updateUI(); };
+        cBox.appendChild(btn);
+    });
+
+    document.getElementById('prevBtn').style.visibility = (curIdx === start) ? "hidden" : "visible";
+    document.getElementById('nextBtn').innerText = (curIdx === end) ? (curIdx === 39 ? "Submit" : "Next Part") : "Next Item";
+}
+
+function changeQ(dir) {
+    if(dir === 1 && (curIdx === 9 || curIdx === 19 || curIdx === 29)) { showLoader(); return; }
+    if(dir === 1 && curIdx === 39) return submit();
+    curIdx += dir; updateUI();
+}
+
+function showLoader() {
+    const loader = document.getElementById('loader-ui');
+    loader.style.display = 'flex';
+    setTimeout(() => { loader.style.display = 'none'; curIdx++; updateUI(); }, 3000);
+}
+
+async function submit() {
+    if(!confirm("Submit final answers?")) return;
+
+    let s = { A:0, B:0, C:0, D:0, Total:0 };
+    userAnswers.forEach((ans, i) => {
+        if(ans === DATA.ans[i]) {
+            s.Total++;
+            if(i < 10) s.A++; else if(i < 20) s.B++; else if(i < 30) s.C++; else s.D++;
+        }
+    });
+
+    const percent = (s.Total / 40) * 100;
+    let level = "";
+    if(percent >= 80) level = "INDEPENDENT";
+    else if(percent >= 59) level = "INSTRUCTIONAL";
+    else level = "FRUSTRATION";
+
+    const studentData = {
+        surname: document.getElementById('surname').value,
+        firstname: document.getElementById('firstname').value,
+        gender: document.getElementById('gender').value,
+        section: document.getElementById('section').value,
+        lrn: document.getElementById('lrn').value,
+        scoreA: s.A,
+        scoreB: s.B,
+        scoreC: s.C,
+        scoreD: s.D,
+        totalScore: s.Total,
+        level: level
+    };
+
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwZKDdfQOlVnfVMN80DN6cHIwtZF4MnJ5X7pSa3nuLLq45GJiptvIDu6N1BVdrg48IFwQ/exec'; 
+
+    try {
+        await fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify(studentData)
+        });
+    } catch (error) {
+        console.error('Error!', error.message);
+    }
+
+    document.getElementById('res-A').innerText = s.A + " / 10";
+    document.getElementById('res-B').innerText = s.B + " / 10";
+    document.getElementById('res-C').innerText = s.C + " / 10";
+    document.getElementById('res-D').innerText = s.D + " / 10";
+    document.getElementById('res-total').innerText = s.Total + " / 40";
+    
+    const tag = document.getElementById('comp-level');
+    tag.innerText = level;
+    tag.style.background = level === "INDEPENDENT" ? "var(--ans-green)" : (level === "INSTRUCTIONAL" ? "var(--inst-blue)" : "var(--frust-red)");
+
+    document.getElementById('quiz-ui').style.display = 'none';
+    document.getElementById('results-ui').style.display = 'flex';
+}
+</script>
+</body>
+</html>
